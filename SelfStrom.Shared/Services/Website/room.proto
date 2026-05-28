@@ -1,0 +1,43 @@
+syntax = "proto3";
+option csharp_namespace = "SelfStrom.Shared.Services.Website";
+package Rooms;
+
+service RoomService {
+	rpc ListByHome (ListByHomeRequest) returns (ListRoomAnswer);
+	rpc DeleteRoom (DeleteRoomRequest) returns (RoomChangeResponse);
+	rpc CreateRoom (RoomCreateRequest) returns (RoomChangeResponse);
+	rpc EditRoom (RoomChangeRequest) returns (RoomChangeResponse);
+}
+
+message ListByHomeRequest {
+	string homeId = 1;
+}
+
+message ListRoomAnswer {
+	repeated RoomProto rooms = 1;
+}
+
+message DeleteRoomRequest {
+	string roomId = 1;
+}
+
+message RoomChangeResponse {
+	bool success = 1;
+	string message = 2;
+}
+
+message RoomCreateRequest {
+	string homeId = 1;
+	string name = 2;
+}
+
+message RoomChangeRequest {
+	string id = 1;
+	string name = 2;
+}
+
+message RoomProto {
+	string id = 1;
+	int32 number = 2;
+	string name = 3;
+}

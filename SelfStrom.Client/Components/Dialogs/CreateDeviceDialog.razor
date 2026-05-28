@@ -1,0 +1,141 @@
+﻿@using System.ComponentModel.DataAnnotations
+
+@inject RoomService.RoomServiceClient roomService
+@inject DeviceService.DeviceServiceClient deviceService
+@inject HomeService.HomeServiceClient homeService
+
+<EditForm Model="@model" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+    <MudGrid>
+        <MudItem>
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="@Typo.h3">Create Device</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSelect T="HomeProto" Label="Home" Value="@_currentHome" ValueChanged="OnHomeChange">
+                        @foreach (HomeProto home in homes)
+                        {
+                            <MudSelectItem Value="home">
+                                @home.Number - @home.Name
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    @if (_isLoading)
+                    {
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" />
+                        <MudSkeleton SkeletonType="SkeletonType.Text" />
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" />
+                    }
+                    else
+                    {
+
+                        <MudSelect T="AvailableDeviceProto" Label="Device" @bind-Value="model.Device" For="@(() => model.Device)">
+                            @foreach (AvailableDeviceProto device in availabelDevices)
+                            {
+                                <MudSelectItem Value="device">
+                                    @device.IpAddress - @device.MacAddress
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+
+
+                        <MudSelect @bind-Value="model.Room" Label="Room" For="@(() => model.Room)">
+                            @foreach (RoomProto room in rooms)
+                            {
+                                <MudSelectItem Value="room">
+                                    @room.Number - @room.Name
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudTextField Label="Description" HelperText="Optional"
+                                      @bind-Value="model.Description" For="@(() => model.Description)" />
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Create</MudButton>
+                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</EditForm>
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    private CreateDeviceForm model = new CreateDeviceForm();
+    private List<HomeProto> homes = new List<HomeProto>();
+    private List<RoomProto> rooms = new List<RoomProto>();
+    private List<AvailableDeviceProto> availabelDevices = new List<AvailableDeviceProto>();
+
+    private HomeProto? _currentHome;
+    private bool _isLoading = true;
+
+    public class CreateDeviceForm
+    {
+        [Required]
+        public AvailableDeviceProto Device { get; set; } = null!;
+
+        public string? Description { get; set; }
+
+        [Required]
+        public RoomProto Room { get; set; } = null!;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        homes = (await homeService.ListByUserAsync(new ListByUserRequest())).Homes.ToList();
+    }
+
+    private async Task OnHomeChange(HomeProto home)
+    {
+        _currentHome = home;
+
+        _isLoading = true;
+
+        if (_currentHome is null)
+        {
+            return;
+        }
+
+        rooms = (await roomService.ListByHomeAsync(new ListByHomeRequest()
+            {
+                HomeId = home.Id
+            })).Rooms.ToList();
+
+        availabelDevices = (await deviceService.GetAvailableDevicesAsync(new GetAvailableDevicesRequest()
+            {
+                HomeId = home.Id
+            })).Devices.ToList();
+
+        _isLoading = false;
+    }
+
+    private async Task Submit()
+    {
+        if (_isLoading)
+        {
+            return;
+        }
+
+        await deviceService.CreateDeviceAsync(new CreateDeviceRequest()
+        {
+            HomeId = _currentHome!.Id,
+            RoomId = model.Room.Id,
+            DeviceId = model.Device.DeviceId,
+            Description = model.Description
+        });
+
+        MudDialog.Close();
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

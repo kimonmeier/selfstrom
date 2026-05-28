@@ -1,0 +1,104 @@
+﻿@page "/worker"
+@using Microsoft.AspNetCore.Authorization
+@using SelfStrom.Client.Components.Dialogs
+@attribute [Authorize]
+@inject WorkerService.WorkerServiceClient workerService
+@inject HomeService.HomeServiceClient homeService
+
+<MudText Typo="@Typo.h3">Workers</MudText>
+<MudText Typo="@Typo.subtitle1">You have to create worker!</MudText>
+
+<MudTable Items="@Worker" CanCancelEdit="true" ReadOnly="true" Loading="@_isLoading">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Worker</MudText>
+        <MudSpacer />
+        <MudButton OnClick="LoadData" Color="@Color.Secondary">
+            <MudIcon Icon="@Icons.Material.Filled.Repeat"></MudIcon>
+        </MudButton>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Number</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Delete</MudTh>
+    </HeaderContent>
+    <GroupHeaderTemplate>
+        <MudTh colspan="4">@($"{context.GroupName}: {context.Items.FirstOrDefault()?.HomeName}") </MudTh>
+    </GroupHeaderTemplate>
+    <RowTemplate>
+        <MudTd DataLabel="Number">
+            @context.Number
+        </MudTd>
+        <MudTd DataLabel="Name">
+            @context.Name
+        </MudTd>
+        <MudTd DataLabel="Status">
+            @if(context.Online)
+            {
+                <MudAlert Severity="@Severity.Success">Online</MudAlert>
+            } else
+            {
+                <MudAlert Severity="@Severity.Error">Offline</MudAlert>
+            }
+        </MudTd>
+        <MudTd>
+            <MudButton OnClick="@(() => DeleteWorker(context))">
+                <MudIcon Icon="@Icons.Material.Filled.Delete" />
+            </MudButton>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+<MudButtonGroup>
+    <MudButton Color="@Color.Primary" OnClick="CreateWorker">Create Worker</MudButton>
+</MudButtonGroup>
+
+@code {
+    [Inject]
+    private IDialogService DialogService { get; set; } = null!;
+
+    private List<WorkerProto> Worker { get; set; } = new List<WorkerProto>();
+    private bool _isLoading = true;
+
+    private TableGroupDefinition<WorkerProto> _groupDefinition = new()
+        {
+            GroupName = "Home",
+            Indentation = false,
+            Expandable = true,
+            IsInitiallyExpanded = false,
+            Selector = (e) => e.HomeId
+        };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+
+        Worker = (await workerService.ListByUserAsync(new Google.Protobuf.WellKnownTypes.Empty())).Worker.ToList();
+
+        _isLoading = false;
+    }
+
+    private async Task DeleteWorker(WorkerProto worker)
+    {
+        await workerService.DeleteWorkerAsync(new DeleteWorkerRequest()
+            {
+                WorkerId = worker.Id
+            });
+
+        await LoadData();
+    }
+
+    private async Task CreateWorker()
+    {
+        await DialogService.Show<CreateWorkerDialog>().Result;
+
+        await LoadData();
+    }
+}

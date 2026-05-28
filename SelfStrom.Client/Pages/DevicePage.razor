@@ -1,0 +1,127 @@
+﻿@page "/devices"
+@using Microsoft.AspNetCore.Authorization
+@using SelfStrom.Client.Components.Dialogs
+@attribute [Authorize]
+@inject DeviceService.DeviceServiceClient deviceService
+@inject RoomService.RoomServiceClient roomService
+@inject HomeService.HomeServiceClient homeService
+
+<MudSelect T="HomeProto" Label="Home" Value="_currentHome" ValueChanged="OnHomeChanged">
+    @foreach (HomeProto home in Homes)
+    {
+        <MudSelectItem Value="home">
+            @home.Number - @home.Name
+        </MudSelectItem>
+    }
+</MudSelect>
+
+<MudSelect T="RoomProto" Label="Home" Value="_currentRoom" ValueChanged="OnRoomChanged">
+    @foreach (RoomProto room in Rooms)
+    {
+        <MudSelectItem Value="room">
+            @room.Number - @room.Name
+        </MudSelectItem>
+    }
+</MudSelect>
+
+
+<MudTable Items="@Devices" Loading="@_isLoading">
+    <HeaderContent>
+        <MudTh>Mac-Address</MudTh>
+        <MudTh>Description</MudTh>
+        <MudTh>Löschen</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Mac-Address">
+            @context.MacAddress
+        </MudTd>
+        <MudTd DataLabel="Description">
+            @context.Description
+        </MudTd>
+        <MudTd>
+            <MudButton OnClick="@(() => deleteDevice(context))">
+                <MudIcon Icon="@Icons.Material.Filled.Delete" />
+            </MudButton>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+<MudButtonGroup>
+    <MudButton Color="@Color.Primary" OnClick="createDevice">Create Device</MudButton>
+</MudButtonGroup>
+
+@code {
+    [Inject]
+    private IDialogService DialogService { get; set; } = null!;
+
+    private List<HomeProto> Homes { get; set; } = new List<HomeProto>();
+    private List<RoomProto> Rooms { get; set; } = new List<RoomProto>();
+    private List<DeviceProto> Devices { get; set; } = new List<DeviceProto>();
+    private HomeProto? _prevHome;
+    private HomeProto? _currentHome;
+    private RoomProto? _prevRoom;
+    private RoomProto? _currentRoom;
+
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        Homes = (await homeService.ListByUserAsync(new ListByUserRequest())).Homes.ToList();
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+
+        if (_prevHome != _currentHome)
+        {
+            if (_currentHome is null)
+            {
+                return;
+            }
+
+            Rooms = (await roomService.ListByHomeAsync(new ListByHomeRequest() { HomeId = _currentHome.Id })).Rooms.ToList();
+        }
+        if (_currentRoom is null)
+        {
+            return;
+        }
+
+        Devices = (await deviceService.GetDevicesAsync(new GetDevicesRequest() { HomeId = _currentHome.Id, RoomId = _currentRoom.Id })).Devices.ToList();
+
+        _isLoading = false;
+    }
+
+    private async Task OnHomeChanged(HomeProto homeProto)
+    {
+        _prevHome = _currentHome;
+        _currentHome = homeProto;
+
+        await LoadData();
+    }
+
+    private async Task OnRoomChanged(RoomProto roomProto)
+    {
+        _prevRoom = _currentRoom;
+        _currentRoom = roomProto;
+
+        await LoadData();
+    }
+
+    private async Task deleteDevice(DeviceProto device)
+    {
+        await Task.CompletedTask;
+        throw new NotImplementedException();
+    }
+
+    private async Task createDevice()
+    {
+        await DialogService.Show<CreateDeviceDialog>().Result;
+
+        await LoadData();
+    }
+}

@@ -1,0 +1,139 @@
+﻿@page "/room"
+@using Microsoft.AspNetCore.Authorization
+@using SelfStrom.Client.Components.Dialogs
+@attribute [Authorize]
+@inject RoomService.RoomServiceClient roomService
+@inject HomeService.HomeServiceClient homeService
+
+<MudText Typo="@Typo.h3">Rooms</MudText>
+<MudText Typo="@Typo.subtitle1">You have to create rooms!</MudText>
+
+<MudSelect T="HomeProto" Label="Home" Value="_currentHome" ValueChanged="OnHomeChanged">
+    @foreach (HomeProto home in Homes)
+    {
+        <MudSelectItem Value="home">
+            @home.Number - @home.Name
+        </MudSelectItem>
+    }
+</MudSelect>
+
+<MudTable Items="@Rooms" CanCancelEdit="true" OnCancelEditClick="ResetItemToOriginalValues" RowEditPreview="BackupItem" Loading="@_isLoading" RowEditCommit="@onRoomEdited" EditTrigger="@TableEditTrigger.EditButton">
+    <HeaderContent>
+        <MudTh>Number</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Löschen</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Number">
+            @context.Number
+        </MudTd>
+        <MudTd DataLabel="Name">
+            @context.Name
+        </MudTd>
+        <MudTd>
+            <MudButton OnClick="@(() => deleteRoom(context))">
+                <MudIcon Icon="@Icons.Material.Filled.Delete" />
+            </MudButton>
+        </MudTd>
+    </RowTemplate>
+    <RowEditingTemplate>
+        <MudTd DataLabel="Number">@context.Number</MudTd>
+        <MudTd DataLabel="Name">
+            <MudTextField @bind-Value="context.Name"></MudTextField>
+        </MudTd>
+        <MudTd>
+            <MudButton OnClick="@(() => deleteRoom(context))" Disabled="true">
+                <MudIcon Icon="@Icons.Material.Filled.Delete" />
+            </MudButton>
+        </MudTd>
+    </RowEditingTemplate>
+</MudTable>
+
+<MudButtonGroup>
+    <MudButton Color="@Color.Primary" OnClick="CreateRoom">Create Home</MudButton>
+</MudButtonGroup>
+
+@code {
+    [Inject]
+    private IDialogService DialogService { get; set; } = null!;
+
+    private List<RoomProto> Rooms { get; set; } = new List<RoomProto>();
+    private List<HomeProto> Homes { get; set; } = new List<HomeProto>();
+    private RoomProto? _elementBeforeEdit;
+    private HomeProto? _currentHome;
+    private bool _isLoading = true;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        Homes = (await homeService.ListByUserAsync(new ListByUserRequest())).Homes.ToList();
+
+        await LoadData();
+    }
+
+    private async Task OnHomeChanged(HomeProto homeProto)
+    {
+        _currentHome = homeProto;
+
+        await LoadData();
+    }
+
+    private void BackupItem(object element)
+    {
+        _elementBeforeEdit = new()
+            {
+                Id = ((RoomProto)element).Id,
+                Number = ((RoomProto)element).Number,
+                Name = ((RoomProto)element).Name,
+            };
+    }
+
+    private void ResetItemToOriginalValues(object element)
+    {
+        ((RoomProto)element).Id = _elementBeforeEdit!.Id;
+        ((RoomProto)element).Number = _elementBeforeEdit!.Number;
+        ((RoomProto)element).Name = _elementBeforeEdit!.Name;
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+
+        if (_currentHome is null)
+        {
+            return;
+        } 
+
+        Rooms = (await roomService.ListByHomeAsync(new ListByHomeRequest() { HomeId = _currentHome.Id })).Rooms.ToList();
+
+        _isLoading = false;
+    }
+
+    private async Task deleteRoom(RoomProto room)
+    {
+        await roomService.DeleteRoomAsync(new DeleteRoomRequest() { RoomId = room.Id });
+        await LoadData();
+    }
+
+    private async void onRoomEdited(object element)
+    {
+        RoomProto editedRoom = (RoomProto)element;
+
+        await roomService.EditRoomAsync(new RoomChangeRequest()
+            {
+                Id = editedRoom.Id,
+                Name = editedRoom.Name,
+            });
+
+        await LoadData();
+    }
+
+    private async Task CreateRoom()
+    {
+        await DialogService.Show<CreateRoomDialog>().Result;
+
+        await LoadData();
+    }
+}

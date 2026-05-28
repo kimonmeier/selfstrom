@@ -1,0 +1,109 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using SelfStrom.Client.Services
+@inject ClipboardService clipboardService
+@inject WorkerService.WorkerServiceClient workerService
+@inject HomeService.HomeServiceClient homeService
+
+<EditForm Model="@model" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+    <MudGrid>
+        <MudItem>
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="@Typo.h3">Create Worker</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                @if (workerApiKey is null)
+                {
+                    <MudCardContent>
+                        <MudTextField Label="Name" HelperText="Min. 4 characters"
+                                      @bind-Value="model.Name" For="@(() => model.Name)" />
+                        <MudSelect @bind-Value="model.Home" Label="Home" For="@(() => model.Home)">
+                            @foreach (HomeProto home in homes)
+                            {
+                                <MudSelectItem Value="home">
+                                    @home.Number - @home.Name
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Create</MudButton>
+                        <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+                    </MudCardActions>
+                } else
+                {
+                    <MudCardContent>
+                        <MudButton OnClick="CopyKeyToClipboard" ButtonType="@ButtonType.Button" Variant="@Variant.Text">
+                            <div class="flex flex-row w-full">
+                                <div>
+                                    @workerApiKey
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Note"></MudIcon>
+                            </div>
+                        </MudButton>
+                        <MudAlert Severity="@Severity.Info">The worker-key has to be set into the config of the worker. It cann't be obtained at a later stage!</MudAlert>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton OnClick="CloseDialog" Color="@Color.Primary">Close</MudButton>
+                    </MudCardActions>
+                }
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</EditForm>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    private string? workerApiKey;
+
+    private CreateWorkerForm model = new CreateWorkerForm();
+    private List<HomeProto> homes = new List<HomeProto>();
+
+    public class CreateWorkerForm
+    {
+        [Required]
+        [MinLength(4)]
+        [MaxLength(254)]
+        public string Name { get; set; } = null!;
+
+        [Required]
+        public HomeProto Home { get; set; } = null!;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        homes = (await homeService.ListByUserAsync(new ListByUserRequest())).Homes.ToList();
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task CopyKeyToClipboard()
+    {
+        await clipboardService.WriteTextAsync(workerApiKey!);
+    }
+
+    private void CloseDialog()
+    {
+        MudDialog.Close();
+    }
+
+    private async Task Submit()
+    {
+        var response = await workerService.CreateWorkerAsync(new WorkerCreateRequest()
+            {
+                Name = model.Name,
+                HomeId = model.Home.Id,
+            });
+
+        workerApiKey = response.ApiKey;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

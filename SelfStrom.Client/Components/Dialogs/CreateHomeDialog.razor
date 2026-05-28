@@ -1,0 +1,59 @@
+﻿@using System.ComponentModel.DataAnnotations
+@inject HomeService.HomeServiceClient homeService
+
+<EditForm Model="@model" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+    <MudGrid>
+        <MudItem>
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="@Typo.h3">Create Home</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTextField Label="Name" HelperText="Min. 4 characters"
+                                  @bind-Value="model.Name" For="@(() => model.Name)" />
+                    <MudTextField Label="Description" Class="mt-3"
+                                  @bind-Value="model.Description" For="@(() => model.Description)" />
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Create</MudButton>
+                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</EditForm>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    private CreateHomeForm model = new CreateHomeForm();
+
+    public class CreateHomeForm
+    {
+        [Required]
+        [MinLength(4)]
+        public string Name { get; set; } = null!;
+
+        public string? Description { get; set; }
+    }
+
+    private async Task Submit()
+    {
+        await homeService.CreateHomeAsync(new HomeCreateRequest()
+            {
+                Name = model.Name,
+                Description = model.Description
+            });
+
+        MudDialog.Close();
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

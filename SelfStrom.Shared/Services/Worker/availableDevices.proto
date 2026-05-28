@@ -1,0 +1,18 @@
+syntax = "proto3";
+option csharp_namespace = "SelfStrom.Shared.Services.Worker";
+package AvailableDevices;
+
+import "google/protobuf/empty.proto";
+
+service AvailableDevicesService {
+	rpc ReportAvailableDevices(ReportAvailableDevicesMessage) returns (google.protobuf.Empty);
+}
+
+message ReportAvailableDevicesMessage {
+	repeated AvailableDevice devices = 1;
+}
+
+message AvailableDevice {
+	string ipAddress = 1;
+	string macAddress = 2;
+}

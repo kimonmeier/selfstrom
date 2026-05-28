@@ -1,0 +1,76 @@
+﻿@using System.ComponentModel.DataAnnotations
+@inject RoomService.RoomServiceClient roomService
+@inject HomeService.HomeServiceClient homeService
+
+<EditForm Model="@model" OnValidSubmit="Submit">
+    <DataAnnotationsValidator />
+    <MudGrid>
+        <MudItem>
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="@Typo.h3">Create Room</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTextField Label="Name" HelperText="Min. 4 characters"
+                                  @bind-Value="model.Name" For="@(() => model.Name)" />
+                    <MudSelect @bind-Value="model.Home" Label="Home" For="@(() => model.Home)">
+                        @foreach(HomeProto home in homes)
+                        {
+                            <MudSelectItem Value="home">
+                                @home.Number - @home.Name
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Create</MudButton>
+                    <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Secondary" OnClick="Cancel">Cancel</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</EditForm>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = null!;
+
+    private CreateRoomForm model = new CreateRoomForm();
+    private List<HomeProto> homes = new List<HomeProto>();
+
+    public class CreateRoomForm
+    {
+        [Required]
+        [MinLength(4)]
+        [MaxLength(254)]
+        public string Name { get; set; } = null!;
+
+        [Required]
+        public HomeProto Home { get; set; } = null!;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        homes = (await homeService.ListByUserAsync(new ListByUserRequest())).Homes.ToList();
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task Submit()
+    {
+        await roomService.CreateRoomAsync(new RoomCreateRequest()
+            {
+                Name = model.Name,
+                HomeId = model.Home.Id,
+            });
+
+        MudDialog.Close();
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

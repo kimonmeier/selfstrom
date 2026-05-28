@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+    <ItemGroup>
+      <None Remove="Services\Website\devices.proto" />
+      <None Remove="Services\Website\home.proto" />
+      <None Remove="Services\Website\room.proto" />
+      <None Remove="Services\Website\worker.proto" />
+      <None Remove="Services\Worker\availableDevices.proto" />
+      <None Remove="Services\Worker\dataSync.proto" />
+      <None Remove="Services\Worker\ping.proto" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="AutoMapper" Version="16.1.1" />
+      <PackageReference Include="Google.Protobuf" Version="3.28.1" />
+      <PackageReference Include="Grpc.Net.Client" Version="2.65.0" />
+      <PackageReference Include="Grpc.Tools" Version="2.66.0">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Protobuf Include="Services\Website\devices.proto" />
+      <Protobuf Include="Services\Website\home.proto" />
+      <Protobuf Include="Services\Website\room.proto" Access="Public" GrpcServices="Both" />
+      <Protobuf Include="Services\Website\worker.proto" />
+      <Protobuf Include="Services\Worker\availableDevices.proto" />
+      <Protobuf Include="Services\Worker\dataSync.proto" Access="Public" />
+      <Protobuf Include="Services\Worker\ping.proto" />
+    </ItemGroup>
+</Project>

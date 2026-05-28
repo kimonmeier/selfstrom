@@ -1,0 +1,49 @@
+syntax = "proto3";
+option csharp_namespace = "SelfStrom.Shared.Services.Website";
+package Devices;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+service DeviceService {
+	rpc GetDevices (GetDevicesRequest) returns (GetDevicesResponse) {}
+	rpc GetAvailableDevices (GetAvailableDevicesRequest) returns (GetAvailableDevicesResponse) {}
+	rpc CreateDevice (CreateDeviceRequest) returns (google.protobuf.Empty) {}
+}
+
+message CreateDeviceRequest {
+	string homeId = 1;
+	string deviceId = 2;
+	string roomId = 3;
+	optional string description = 4;
+}
+
+message GetDevicesRequest {
+	string homeId = 1;
+	string roomId = 2;
+}
+
+message GetAvailableDevicesRequest {
+	string homeId = 1;
+}
+
+message GetDevicesResponse {
+	repeated DeviceProto devices = 1;
+}
+
+message GetAvailableDevicesResponse {
+	repeated AvailableDeviceProto devices = 1;
+}
+
+message AvailableDeviceProto {
+	string deviceId = 1;
+	string ipAddress = 2;
+	string macAddress = 3;
+}
+
+message DeviceProto {
+	string deviceId = 1;
+	string macAddress = 2;
+	optional string description = 3;
+	optional google.protobuf.Timestamp lastUpdate = 4;
+}

@@ -1,0 +1,9 @@
+syntax = "proto3";
+option csharp_namespace = "SelfStrom.Shared.Services.Worker";
+package Ping;
+
+import "google/protobuf/empty.proto";
+
+service PingService {
+	rpc SendPing(google.protobuf.Empty) returns (google.protobuf.Empty);
+}

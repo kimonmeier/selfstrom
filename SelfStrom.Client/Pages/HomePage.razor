@@ -1,0 +1,123 @@
+﻿@page "/home"
+@using Microsoft.AspNetCore.Authorization
+@using SelfStrom.Client.Components.Dialogs
+@attribute [Authorize]
+@inject HomeService.HomeServiceClient homeService
+
+<MudText Typo="@Typo.h3">Homes</MudText>
+<MudText Typo="@Typo.subtitle1">You have to create homes!</MudText>
+
+<MudTable Items="@Homes" CanCancelEdit="true" OnCancelEditClick="ResetItemToOriginalValues" RowEditPreview="BackupItem" Loading="@_isLoading" RowEditCommit="@onHomeEdited" EditTrigger="@TableEditTrigger.EditButton">
+    <HeaderContent>
+        <MudTh>Number</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Description</MudTh>
+        <MudTh>Löschen</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Number">
+            @context.Number
+        </MudTd>
+        <MudTd DataLabel="Name">
+            @context.Name
+        </MudTd>
+        <MudTd DataLabel="Description">
+            @context.Description
+        </MudTd>
+        <MudTd>
+            <MudButton OnClick="@(() => deleteHome(context))" >
+                <MudIcon Icon="@Icons.Material.Filled.Delete" />
+            </MudButton>
+        </MudTd>
+    </RowTemplate>
+    <RowEditingTemplate>
+        <MudTd DataLabel="Number">@context.Number</MudTd>
+        <MudTd DataLabel="Name">
+            <MudTextField @bind-Value="context.Name"></MudTextField>
+        </MudTd>
+        <MudTd DataLabel="Description">
+            <MudTextField @bind-Value="context.Description"></MudTextField>
+        </MudTd>
+        <MudTd>
+            <MudButton OnClick="@(() => deleteHome(context))" Disabled="true">
+                <MudIcon Icon="@Icons.Material.Filled.Delete" />
+            </MudButton>
+        </MudTd>
+    </RowEditingTemplate>
+</MudTable>
+
+<MudButtonGroup>
+    <MudButton Color="@Color.Primary" OnClick="CreateHome">Create Home</MudButton>
+</MudButtonGroup>
+
+@code {
+    [Inject]
+    private IDialogService DialogService { get; set; } = null!;
+
+    private List<HomeProto> Homes { get; set; } = new List<HomeProto>();
+    private HomeProto? _elementBeforeEdit;
+    private bool _isLoading = true;
+
+
+    private void BackupItem(object element)
+    {
+        _elementBeforeEdit = new()
+            {
+                Number = ((HomeProto)element).Number,
+                Description = ((HomeProto)element).Description,
+                Id = ((HomeProto)element).Id,
+                Name = ((HomeProto)element).Name,
+            };
+    }
+
+    private void ResetItemToOriginalValues(object element)
+    {
+        ((HomeProto)element).Number = _elementBeforeEdit!.Number;
+        ((HomeProto)element).Description = _elementBeforeEdit!.Description;
+        ((HomeProto)element).Id = _elementBeforeEdit!.Id;
+        ((HomeProto)element).Name = _elementBeforeEdit!.Name;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+
+        Homes = (await homeService.ListByUserAsync(new ListByUserRequest())).Homes.ToList();
+
+        _isLoading = false;
+    }
+
+    private async Task deleteHome(HomeProto home)
+    {
+        await homeService.DeleteHomeAsync(new DeleteHomeRequest() { HomeId = home.Id });
+        await LoadData();
+    }
+
+    private async void onHomeEdited(object element)
+    {
+        HomeProto editedHome = (HomeProto) element;
+
+        await homeService.EditHomeAsync(new HomeChangeRequest()
+            {
+                Id = editedHome.Id,
+                Name = editedHome.Name,
+                Description = editedHome.Description,
+            });
+
+        await LoadData();
+    }
+
+    private async Task CreateHome()
+    {
+        await DialogService.Show<CreateHomeDialog>().Result;
+
+        await LoadData();
+    }
+}

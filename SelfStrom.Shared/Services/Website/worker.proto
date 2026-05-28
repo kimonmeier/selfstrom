@@ -1,0 +1,44 @@
+syntax = "proto3";
+option csharp_namespace = "SelfStrom.Shared.Services.Website";
+package Workers;
+
+import "google/protobuf/empty.proto";
+
+service WorkerService {
+	rpc ListByUser (google.protobuf.Empty) returns (ListWorkerAnswer);
+	rpc DeleteWorker (DeleteWorkerRequest) returns (WorkerDeleteResponse);
+	rpc CreateWorker (WorkerCreateRequest) returns (WorkerCreateResponse);
+}
+
+message ListWorkerAnswer {
+	repeated WorkerProto worker = 1;
+}
+
+message WorkerProto {
+	string id = 1;
+	int32 number = 2;
+	string name = 3;
+	bool online = 4;
+	string homeId = 5;
+	string homeName = 6;
+	string homeNumber = 7;
+}
+
+message DeleteWorkerRequest {
+	string workerId = 1;
+}
+
+message WorkerDeleteResponse {
+	bool success = 1;
+	string message = 2;
+}
+
+message WorkerCreateRequest {
+	string homeId = 1;
+	string name = 2;
+}
+
+message WorkerCreateResponse {
+	bool success = 1;
+	string apiKey = 2;
+}

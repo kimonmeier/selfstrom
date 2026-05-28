@@ -1,0 +1,31 @@
+syntax = "proto3";
+option csharp_namespace = "SelfStrom.Shared.Services.Worker";
+package DataSync;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service DataSyncService {
+	rpc ReportDataPoints(ReportDataPointsRequest) returns (google.protobuf.Empty);
+	rpc ListConnectedDevices(google.protobuf.Empty) returns (ListConnectedDevicesResponse);
+}
+
+
+message ReportDataPointsRequest {
+	repeated DataPointProto dataPoints = 1;
+}
+
+message DataPointProto {
+	string deviceId = 1;
+	optional google.protobuf.Timestamp timestamp = 2;
+	float value = 3;
+}
+
+message ListConnectedDevicesResponse {
+	repeated ConnectedDeviceProto devices = 1;
+}
+
+message ConnectedDeviceProto {
+	string deviceId = 1;
+	string macAddress = 2;
+}

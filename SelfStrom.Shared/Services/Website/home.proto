@@ -1,0 +1,45 @@
+syntax = "proto3";
+option csharp_namespace = "SelfStrom.Shared.Services.Website";
+package Homes;
+
+service HomeService {
+	rpc ListByUser (ListByUserRequest) returns (ListHomeAnswer);
+	rpc DeleteHome (DeleteHomeRequest) returns (HomeChangeResponse);
+	rpc CreateHome (HomeCreateRequest) returns (HomeChangeResponse);
+	rpc EditHome (HomeChangeRequest) returns (HomeChangeResponse);
+}
+
+message HomeChangeResponse {
+	bool success = 1;
+	string errorMessage = 2;
+}
+
+message HomeChangeRequest {
+	string id = 1;
+	string name = 2;
+	string description = 3;
+}
+
+message HomeCreateRequest {
+	string name = 1;
+	string description = 2;
+}
+
+message DeleteHomeRequest {
+	string homeId = 1;
+}
+
+message ListByUserRequest {
+	string userId = 1;
+}
+
+message ListHomeAnswer {
+	repeated HomeProto homes = 1;
+}
+
+message HomeProto {
+	string id = 1;
+	int32 number = 2;
+	string name = 3;
+	string description = 4;
+}
