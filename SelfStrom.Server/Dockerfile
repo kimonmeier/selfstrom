@@ -32,14 +32,8 @@ COPY . .
 RUN dotnet workload install wasm-tools
 
 # Publish
-RUN case "$TARGETARCH" in \
-      amd64) RID=linux-x64 ;; \
-      arm64) RID=linux-arm64 ;; \
-      *)     RID=linux-x64 ;; \
-    esac && \
-    dotnet publish SelfStrom.Server/SelfStrom.Server.csproj \
+RUN dotnet publish SelfStrom.Server/SelfStrom.Server.csproj \
       -c Release \
-      -r $RID \
       -o /app/publish
 
 # ---------- Runtime stage ----------
