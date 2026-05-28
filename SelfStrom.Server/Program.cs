@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
@@ -25,7 +26,6 @@ builder.Configuration.AddJsonFile("appsettings.Development.json", true);
 // Add services to the container.
 builder.Services.AddRazorComponents()
 	.AddInteractiveWebAssemblyComponents();
-
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
@@ -67,6 +67,12 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, EmailSender>();
 
 var app = builder.Build();
+
+app.Use((ctx, next) =>
+{
+	ctx.Request.Scheme = "https";
+	return next();
+});
 
 using(IServiceScope scope = app.Services.CreateScope())
 {
