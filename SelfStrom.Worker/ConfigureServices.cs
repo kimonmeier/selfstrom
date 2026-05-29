@@ -106,7 +106,7 @@ internal static class ConfigureServices
             {
                 MaxAttempts = 5,
                 InitialBackoff = TimeSpan.FromSeconds(1),
-                MaxBackoff = TimeSpan.FromSeconds(10),
+                MaxBackoff = TimeSpan.FromSeconds(300),
                 BackoffMultiplier = 2,
                 RetryableStatusCodes =
                 {
