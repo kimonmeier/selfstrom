@@ -118,31 +118,47 @@ internal class SearchDeviceJob : IJob
     private async Task<List<IPAddress>> ScanNetworkInterface(NetworkInterface networkInterface)
     {
         List<UnicastIPAddressInformation> unicastAddresses = networkInterface.GetIPProperties().UnicastAddresses.ToList();
-        IPAddress currentIp = unicastAddresses.Single(x => x.Address.AddressFamily == AddressFamily.InterNetwork).Address;
-        IPAddress subnetAddress = unicastAddresses.Single(x => x.Address.Equals(currentIp)).IPv4Mask;
+        var ipv4Addresses = unicastAddresses.Where(x => x.Address.AddressFamily == AddressFamily.InterNetwork).ToList();
+        if (!ipv4Addresses.Any())
+        {
+            return new List<IPAddress>();
+        }
 
         List<IPAddress> pingableDevice = new List<IPAddress>();
         List<Task> tasks = new List<Task>();
 
-        await Parallel.ForEachAsync(GetSubnetRange(currentIp, subnetAddress),
-        new ParallelOptions()
+        foreach (UnicastIPAddressInformation ipAddressInformation in ipv4Addresses)
         {
-            MaxDegreeOfParallelism = Environment.ProcessorCount,
-        },
-        async (ipAdress, cancellationToken) =>
-        {
-            using Ping ping = new Ping();
+            pingableDevice.AddRange(await ScanSubnet(ipAddressInformation.Address, ipAddressInformation.IPv4Mask));
+        }
 
-            var reply = await ping.SendPingAsync(ipAdress, 100);
-            if (reply.Status != IPStatus.Success)
+        return pingableDevice;
+    }
+
+    private async Task<List<IPAddress>> ScanSubnet(IPAddress address, IPAddress subnetMask)
+    {
+        List<IPAddress> pingableDevice = new List<IPAddress>();
+        List<Task> tasks = new List<Task>();
+
+        await Parallel.ForEachAsync(GetSubnetRange(address, subnetMask),
+            new ParallelOptions()
             {
-                _logger.Verbose($"Ping failed for {ipAdress}");
-                return;
-            }
-            _logger.Verbose($"Ping success for {ipAdress}");
+                MaxDegreeOfParallelism = Environment.ProcessorCount,
+            },
+            async (ipAdress, _) =>
+            {
+                using Ping ping = new Ping();
 
-            pingableDevice.Add(ipAdress);
-        });
+                var reply = await ping.SendPingAsync(ipAdress, 100);
+                if (reply.Status != IPStatus.Success)
+                {
+                    _logger.Verbose($"Ping failed for {ipAdress}");
+                    return;
+                }
+                _logger.Verbose($"Ping success for {ipAdress}");
+
+                pingableDevice.Add(ipAdress);
+            });
 
         return pingableDevice;
     }
