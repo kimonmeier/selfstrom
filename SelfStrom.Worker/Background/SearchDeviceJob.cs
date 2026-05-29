@@ -32,7 +32,8 @@ internal class SearchDeviceJob : IJob
 
     public async Task Execute(IJobExecutionContext context)
     {
-        var interfaces = NetworkInterface.GetAllNetworkInterfaces().Where(x => x.NetworkInterfaceType == NetworkInterfaceType.Ethernet || x.NetworkInterfaceType == NetworkInterfaceType.GigabitEthernet || x.NetworkInterfaceType == NetworkInterfaceType.Wireless80211);
+        _logger.Debug("Scanning for devices");
+        var interfaces = NetworkInterface.GetAllNetworkInterfaces().Where(x => (x.NetworkInterfaceType == NetworkInterfaceType.Ethernet || x.NetworkInterfaceType == NetworkInterfaceType.GigabitEthernet || x.NetworkInterfaceType == NetworkInterfaceType.Wireless80211) && !x.Name.Contains("docker", StringComparison.OrdinalIgnoreCase) && !x.Description.Contains("docker", StringComparison.OrdinalIgnoreCase));
         List<IPAddress> pingableIPAddress = new List<IPAddress>();
         foreach (var iface in interfaces) {
             pingableIPAddress.AddRange(await ScanNetworkInterface(iface));
@@ -125,11 +126,12 @@ internal class SearchDeviceJob : IJob
         }
 
         List<IPAddress> pingableDevice = new List<IPAddress>();
-        List<Task> tasks = new List<Task>();
 
         foreach (UnicastIPAddressInformation ipAddressInformation in ipv4Addresses)
         {
+            _logger.Debug("Scanning IP: {0} with Submask {1} started", ipAddressInformation.Address, ipAddressInformation.IPv4Mask);
             pingableDevice.AddRange(await ScanSubnet(ipAddressInformation.Address, ipAddressInformation.IPv4Mask));
+            _logger.Debug("Scanning IP: {0} with Submask {1} finished", ipAddressInformation.Address, ipAddressInformation.IPv4Mask);
         }
 
         return pingableDevice;
@@ -138,8 +140,8 @@ internal class SearchDeviceJob : IJob
     private async Task<List<IPAddress>> ScanSubnet(IPAddress address, IPAddress subnetMask)
     {
         List<IPAddress> pingableDevice = new List<IPAddress>();
-        List<Task> tasks = new List<Task>();
 
+        _logger.Debug("Scanning subnet {0} with Submask {1}", address, subnetMask);
         await Parallel.ForEachAsync(GetSubnetRange(address, subnetMask),
             new ParallelOptions()
             {
@@ -147,7 +149,7 @@ internal class SearchDeviceJob : IJob
             },
             async (ipAdress, _) =>
             {
-                using Ping ping = new Ping();
+                using Ping ping = new();
 
                 var reply = await ping.SendPingAsync(ipAdress, 100);
                 if (reply.Status != IPStatus.Success)
@@ -160,6 +162,7 @@ internal class SearchDeviceJob : IJob
                 pingableDevice.Add(ipAdress);
             });
 
+        _logger.Debug("Found {0} pingable IP's in subnet", pingableDevice.Count);
         return pingableDevice;
     }
 
@@ -183,11 +186,27 @@ internal class SearchDeviceJob : IJob
         var start = BitConverter.ToUInt32(startIP.GetAddressBytes().Reverse().ToArray(), 0);
         var end = BitConverter.ToUInt32(endIP.GetAddressBytes().Reverse().ToArray(), 0);
 
-        var addresses = new IPAddress[end - start + 1];
-        for (uint i = 0; i <= end - start; i++)
+        // Skip network address (first IP) and broadcast address (last IP)
+        var usableStart = start + 1;
+        var usableEnd = end - 1;
+
+        // Handle edge case where subnet has no usable hosts (e.g., /31 or /32)
+        if (usableStart > usableEnd)
         {
-            addresses[i] = new IPAddress(BitConverter.GetBytes(start + i).Reverse().ToArray());
+            _logger.Debug("Subnet has no usable host addresses");
+            return Array.Empty<IPAddress>();
         }
+
+        var addresses = new IPAddress[usableEnd - usableStart + 1];
+        for (uint i = 0; i <= usableEnd - usableStart; i++)
+        {
+            addresses[i] = new IPAddress(BitConverter.GetBytes(usableStart + i).Reverse().ToArray());
+        }
+        
+        _logger.Debug("Found {0} IP's in subnet", addresses.Length);
+        _logger.Debug("First IP: {0}", addresses[0]);
+        _logger.Debug("Last IP: {0}", addresses[addresses.Length - 1]);
+        _logger.Debug("Subnet Mask: {0}", subnetMask);       
 
         return addresses;
     }
