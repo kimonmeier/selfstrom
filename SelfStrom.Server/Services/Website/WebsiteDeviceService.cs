@@ -93,8 +93,7 @@ internal class WebsiteDeviceService : SelfStrom.Shared.Services.Website.DeviceSe
         }
         using DbTransaction transaction = _transactionFactory.CreateTransaction();
         await transaction.Commit(context.CancellationToken);
-
-
-        return await base.CreateDevice(request, context);
+        
+        return new Empty();
     }
 }
