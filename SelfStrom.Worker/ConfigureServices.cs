@@ -100,26 +100,19 @@ internal static class ConfigureServices
         services.AddSingleton(provider =>
         {
             WebsiteConfiguration config = provider.GetRequiredService<WebsiteConfiguration>();
-            
-            var httpClient = new HttpClient(new SocketsHttpHandler
-            {
-                EnableMultipleHttp2Connections = true,
-                KeepAlivePingDelay = TimeSpan.FromSeconds(60),
-                KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
-            })
+
+            var httpClient = new HttpClient(new GrpcWebHandler(GrpcWebMode.GrpcWeb, new HttpClientHandler()))
             {
                 BaseAddress = new Uri(config.BaseUrl),
-                DefaultRequestVersion = new Version(2, 0),
-                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher,
                 DefaultRequestHeaders =
                 {
                     { "apikey", config.ApiKey }
                 }
             };
-            
+
             var channel = GrpcChannel.ForAddress(config.BaseUrl, new GrpcChannelOptions
             {
-                HttpClient = httpClient,
+                HttpClient = httpClient
             });
             return (TService)Activator.CreateInstance(typeof(TService), channel)!;
         });
