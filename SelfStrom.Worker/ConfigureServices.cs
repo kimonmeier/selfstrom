@@ -18,6 +18,8 @@ using SelfStrom.Shared.Mapping;
 using SelfStrom.Worker.Data.Repositories;
 using Microsoft.Extensions.Logging;
 using EFCoreSecondLevelCacheInterceptor;
+using Grpc.Core;
+using Grpc.Net.Client.Configuration;
 using SelfStrom.Worker.Mapping.Converter;
 
 namespace SelfStrom.Worker;
@@ -97,6 +99,26 @@ internal static class ConfigureServices
 
     public static void AddGrpcService<TService>(this IServiceCollection services) where TService : Grpc.Core.ClientBase
     {
+        var defaultMethodConfig = new MethodConfig
+        {
+            Names = { MethodName.Default },
+            RetryPolicy = new RetryPolicy
+            {
+                MaxAttempts = 5,
+                InitialBackoff = TimeSpan.FromSeconds(1),
+                MaxBackoff = TimeSpan.FromSeconds(10),
+                BackoffMultiplier = 2,
+                RetryableStatusCodes =
+                {
+                    StatusCode.Unavailable,
+                    StatusCode.DeadlineExceeded,
+                    StatusCode.Aborted,
+                    StatusCode.ResourceExhausted,
+                    StatusCode.Internal
+                }
+            }
+        };
+        
         services.AddSingleton(provider =>
         {
             WebsiteConfiguration config = provider.GetRequiredService<WebsiteConfiguration>();
@@ -107,12 +129,16 @@ internal static class ConfigureServices
                 DefaultRequestHeaders =
                 {
                     { "apikey", config.ApiKey }
-                }
+                },
             };
 
             var channel = GrpcChannel.ForAddress(config.BaseUrl, new GrpcChannelOptions
             {
-                HttpClient = httpClient
+                HttpClient = httpClient,
+                ServiceConfig = new ServiceConfig
+                {
+                    MethodConfigs = { defaultMethodConfig }
+                }
             });
             return (TService)Activator.CreateInstance(typeof(TService), channel)!;
         });
